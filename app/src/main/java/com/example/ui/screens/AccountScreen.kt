@@ -209,7 +209,7 @@ fun AccountScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Wallet Section
+            // Wallet Section (Locked — pending licensing / feature not yet active)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
@@ -226,18 +226,34 @@ fun AccountScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = AppTheme.colors.appleGreen)
+                            Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = AppTheme.colors.textMuted)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("رصيد المحفظة الإلكترونية", color = AppTheme.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("رصيد المحفظة الإلكترونية", color = AppTheme.colors.textMuted, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
 
-                        Text(
-                            "${String.format(java.util.Locale.US, "%.2f", walletBalance)} ريال",
-                            color = AppTheme.colors.appleGreen,
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 18.sp
-                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(AppTheme.colors.surfaceVariant)
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                "قريباً — بانتظار الترخيص",
+                                color = AppTheme.colors.textMuted,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp
+                            )
+                        }
                     }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        "${String.format(java.util.Locale.US, "%.2f", walletBalance)} ريال",
+                        color = AppTheme.colors.textMuted,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 18.sp
+                    )
 
                     Spacer(modifier = Modifier.height(14.dp))
 
@@ -247,36 +263,42 @@ fun AccountScreen(
                     ) {
                         Button(
                             onClick = {
-                                walletBalance += 50.0
-                                Toast.makeText(context, "تم شحن 50 ريال للمحفظة بنجاح!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "خدمة المحفظة الإلكترونية ستتوفر بعد استكمال التراخيص", Toast.LENGTH_SHORT).show()
                             },
+                            enabled = false,
                             modifier = Modifier
                                 .weight(1f)
                                 .height(46.dp),
                             shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.appleGreen),
-                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = AppTheme.colors.surfaceVariant,
+                                disabledContainerColor = AppTheme.colors.surfaceVariant,
+                                disabledContentColor = AppTheme.colors.textMuted
+                            )
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Add, contentDescription = null, tint = AppTheme.colors.textMuted, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("شحن +50", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text("شحن +50", color = AppTheme.colors.textMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
 
                         Button(
                             onClick = {
-                                walletBalance += 100.0
-                                Toast.makeText(context, "تم شحن 100 ريال للمحفظة بنجاح!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "خدمة المحفظة الإلكترونية ستتوفر بعد استكمال التراخيص", Toast.LENGTH_SHORT).show()
                             },
+                            enabled = false,
                             modifier = Modifier
                                 .weight(1f)
                                 .height(46.dp),
                             shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.primary),
-                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = AppTheme.colors.surfaceVariant,
+                                disabledContainerColor = AppTheme.colors.surfaceVariant,
+                                disabledContentColor = AppTheme.colors.textMuted
+                            )
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Add, contentDescription = null, tint = AppTheme.colors.textMuted, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("شحن +100", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text("شحن +100", color = AppTheme.colors.textMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -359,62 +381,6 @@ fun AccountScreen(
                 }
             }
 
-            // EXPORT / DOWNLOAD APK GUIDE CARD
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = AppTheme.colors.surface),
-                border = CardDefaults.outlinedCardBorder().copy(
-                    brush = Brush.horizontalGradient(listOf(Color(0xFF2563EB), Color(0xFF10B981))),
-                    width = 1.5.dp
-                )
-            ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(AppTheme.colors.appleGreenContainer),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Default.Android, contentDescription = null, tint = AppTheme.colors.appleGreen, modifier = Modifier.size(24.dp))
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text("تصدير وتحميل ملف التطبيق (APK)", color = AppTheme.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                            Text("لتثبيت التطبيق مباشرة على هواتف حقيقية", color = AppTheme.colors.textSecondary, fontSize = 11.sp)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Text(
-                        "للحصول على ملف APK أو تصدير المشروع ZIP كامل:\n" +
-                        "1. اضغط على أيقونة الإعدادات ⚙️ أعلى يمين أو يسار منصة AI Studio Build.\n" +
-                        "2. اختر 'Export Project' أو 'Generate APK / Download ZIP'.\n" +
-                        "3. كما يمكنك مشاركة رابط التطبيق أو كود الرحلة والباركود للربط الفوري بين الهواتف.",
-                        color = AppTheme.colors.textSecondary,
-                        fontSize = 12.sp,
-                        lineHeight = 19.sp
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Button(
-                        onClick = {
-                            Toast.makeText(context, "يمكنك تصدير APK أو ZIP من قائمة إعدادات المنصة أعلى الشاشة", Toast.LENGTH_LONG).show()
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.appleGreen)
-                    ) {
-                        Icon(Icons.Default.Download, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("طريقة التحميل والتصدير السريع", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    }
-                }
-            }
         }
     }
 }
