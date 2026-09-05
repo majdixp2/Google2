@@ -22,6 +22,5 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Smart Ride Meter"
-
+rootProject.name = "Addad"
 include(":app")
