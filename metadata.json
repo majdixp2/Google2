@@ -1,5 +1,5 @@
 {
-  "name": "Smart Ride Meter",
+  "name": "Addad",
   "description": "تطبيق عداد المشاوير الذكي وحساب تسعيرة الرحلات والانتظار المباشرة للركاب والسائقين",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
