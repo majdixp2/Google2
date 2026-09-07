@@ -74,7 +74,6 @@ fun AccountScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
-    var walletBalance by remember { mutableDoubleStateOf(250.00) }
     var biometricLoginEnabled by remember { mutableStateOf(true) }
     val isDarkMode by ThemeManager.isDarkMode.collectAsState()
 
@@ -202,103 +201,6 @@ fun AccountScreen(
                             Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = AppTheme.colors.primary, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(10.dp))
                             Text("تويوتا كامري 2024 - أ ب ج 1234", color = AppTheme.colors.textSecondary, fontSize = 13.sp)
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            // Wallet Section (Locked — pending licensing / feature not yet active)
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = AppTheme.colors.surface),
-                border = CardDefaults.outlinedCardBorder().copy(
-                    brush = Brush.horizontalGradient(listOf(AppTheme.colors.border, AppTheme.colors.borderSubtle))
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = AppTheme.colors.textMuted)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("رصيد المحفظة الإلكترونية", color = AppTheme.colors.textMuted, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(AppTheme.colors.surfaceVariant)
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                "قريباً — بانتظار الترخيص",
-                                color = AppTheme.colors.textMuted,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Text(
-                        "${String.format(java.util.Locale.US, "%.2f", walletBalance)} ريال",
-                        color = AppTheme.colors.textMuted,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 18.sp
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                Toast.makeText(context, "خدمة المحفظة الإلكترونية ستتوفر بعد استكمال التراخيص", Toast.LENGTH_SHORT).show()
-                            },
-                            enabled = false,
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(46.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = AppTheme.colors.surfaceVariant,
-                                disabledContainerColor = AppTheme.colors.surfaceVariant,
-                                disabledContentColor = AppTheme.colors.textMuted
-                            )
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null, tint = AppTheme.colors.textMuted, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("شحن +50", color = AppTheme.colors.textMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-
-                        Button(
-                            onClick = {
-                                Toast.makeText(context, "خدمة المحفظة الإلكترونية ستتوفر بعد استكمال التراخيص", Toast.LENGTH_SHORT).show()
-                            },
-                            enabled = false,
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(46.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = AppTheme.colors.surfaceVariant,
-                                disabledContainerColor = AppTheme.colors.surfaceVariant,
-                                disabledContentColor = AppTheme.colors.textMuted
-                            )
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null, tint = AppTheme.colors.textMuted, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("شحن +100", color = AppTheme.colors.textMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
