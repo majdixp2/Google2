@@ -173,13 +173,13 @@ fun PassengerHomeScreen(
 
                         Spacer(modifier = Modifier.height(14.dp))
 
-                        // Wallet Mini Card
+                        // Wallet Mini Card (Locked — pending licensing)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(AppTheme.colors.bg)
-                                .border(1.dp, AppTheme.colors.border, RoundedCornerShape(12.dp))
+                                .background(AppTheme.colors.surfaceVariant)
+                                .border(1.dp, AppTheme.colors.borderSubtle, RoundedCornerShape(12.dp))
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
@@ -188,17 +188,17 @@ fun PassengerHomeScreen(
                                 Icon(
                                     Icons.Default.AccountBalanceWallet,
                                     contentDescription = null,
-                                    tint = AppTheme.colors.appleGreen,
+                                    tint = AppTheme.colors.textMuted,
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("رصيد المحفظة:", color = AppTheme.colors.textSecondary, fontSize = 12.sp)
+                                Text("رصيد المحفظة:", color = AppTheme.colors.textMuted, fontSize = 12.sp)
                             }
                             Text(
-                                "250.00 ريال",
-                                color = AppTheme.colors.appleGreen,
+                                "قريباً",
+                                color = AppTheme.colors.textMuted,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
+                                fontSize = 12.sp
                             )
                         }
                     }
@@ -236,10 +236,9 @@ fun PassengerHomeScreen(
                     label = "المحفظة وطرق الدفع",
                     tag = "drawer_wallet",
                     tint = AppTheme.colors.textPrimary,
-                    onClick = {
-                        coroutineScope.launch { drawerState.close() }
-                        onNavigateToAccount()
-                    }
+                    enabled = false,
+                    badge = "قريباً",
+                    onClick = {}
                 )
 
                 DrawerItem(
@@ -808,13 +807,31 @@ private fun DrawerItem(
     label: String,
     tag: String,
     tint: Color,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    badge: String? = null
 ) {
+    val effectiveTint = if (enabled) tint else AppTheme.colors.textMuted
     NavigationDrawerItem(
-        icon = { Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(22.dp)) },
-        label = { Text(label, color = tint, fontSize = 14.sp, fontWeight = FontWeight.Medium) },
+        icon = { Icon(icon, contentDescription = label, tint = effectiveTint, modifier = Modifier.size(22.dp)) },
+        label = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(label, color = effectiveTint, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                if (badge != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(AppTheme.colors.surfaceVariant)
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(badge, color = AppTheme.colors.textMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        },
         selected = false,
-        onClick = onClick,
+        onClick = { if (enabled) onClick() },
         modifier = Modifier
             .padding(horizontal = 12.dp, vertical = 2.dp)
             .testTag(tag),
