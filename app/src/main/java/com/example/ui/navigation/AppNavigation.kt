@@ -142,6 +142,12 @@ fun AppNavigation(
                     },
                     onNavigateToHistory = {
                         navController.navigate(Destinations.TRIP_HISTORY)
+                    },
+                    onNavigateToAccount = {
+                        navController.navigate(Destinations.ACCOUNT)
+                    },
+                    onNavigateToSupport = {
+                        navController.navigate(Destinations.SUPPORT)
                     }
                 )
             }
