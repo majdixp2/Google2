@@ -7,6 +7,14 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -15,9 +23,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,7 +44,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
@@ -79,7 +85,7 @@ fun QrCodeView(
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
-        androidx.compose.foundation.Image(
+        Image(
             bitmap = bitmap.asImageBitmap(),
             contentDescription = "رمز QR للرحلة",
             modifier = Modifier
@@ -104,13 +110,13 @@ fun RealQrCameraScanner(
     var hasScanned by remember { mutableStateOf(false) }
     val currentOnScanned by rememberUpdatedState(onScanned)
 
-    val transition = androidx.compose.animation.core.rememberInfiniteTransition(label = "scan_laser")
+    val transition = rememberInfiniteTransition(label = "scan_laser")
     val laserY by transition.animateFloat(
         initialValue = 0.05f,
         targetValue = 0.95f,
-        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            animation = androidx.compose.animation.core.tween(durationMillis = 1800, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
         ),
         label = "laser_y"
     )
@@ -177,7 +183,7 @@ fun RealQrCameraScanner(
         )
 
         // Corner brackets + animated laser overlay (visual guide only)
-        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
             val cornerLen = 32.dp.toPx()
             val strokeW = 4.dp.toPx()
             val appleGreen = Color(0xFF22C55E)
@@ -221,10 +227,9 @@ fun QrScannerViewfinder(
             .border(2.dp, Color(0xFF22C55E).copy(alpha = 0.4f), RoundedCornerShape(24.dp)),
         contentAlignment = Alignment.Center
     ) {
-        androidx.compose.material3.Text(
+        Text(
             "بانتظار إذن الكاميرا...",
-            color = Color(0xFF9AA7BD),
-            fontSize = androidx.compose.ui.unit.TextUnit.Unspecified
+            color = Color(0xFF9AA7BD)
         )
     }
 }
