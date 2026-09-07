@@ -90,12 +90,16 @@ import com.example.engine.LiveMeterState
 import com.example.engine.RideMeterManager
 import com.example.model.TripStatus
 import com.example.ui.components.QrScannerViewfinder
+import com.example.ui.components.RealQrCameraScanner
 import com.example.ui.theme.AppTheme
 import com.example.ui.theme.ThemeManager
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun PassengerHomeScreen(
     meterManager: RideMeterManager,
@@ -118,6 +122,7 @@ fun PassengerHomeScreen(
     var inputTripId by remember { mutableStateOf("") }
     var isFlashlightOn by remember { mutableStateOf(false) }
     var manualBarcodeText by remember { mutableStateOf("") }
+    val cameraPermissionState = rememberPermissionState(android.Manifest.permission.CAMERA)
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -627,27 +632,46 @@ fun PassengerHomeScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Scanner Viewfinder with Laser
-                    Box(
-                        modifier = Modifier
-                            .size(240.dp)
-                            .clickable {
-                                // Auto scan trigger simulation / Direct connect
-                                coroutineScope.launch {
-                                    showScannerDialog = false
-                                    val targetId = liveState.currentTripId.ifBlank { "TRIP-LIVE" }
-                                    // Start passenger sync with driver server
-                                    syncManager.startPassengerSync(
-                                        meterManager = meterManager,
-                                        tripId = targetId,
-                                        driverIp = "127.0.0.1"
-                                    )
-                                    Toast.makeText(context, "تم مسح الباركود وربط العداد: $targetId", Toast.LENGTH_SHORT).show()
-                                    onNavigateToFareApproval(targetId)
+                    // Real Camera QR Scanner (falls back to a permission request)
+                    if (cameraPermissionState.status.isGranted) {
+                        RealQrCameraScanner(
+                            modifier = Modifier.size(240.dp),
+                            onScanned = { rawValue ->
+                                showScannerDialog = false
+                                meterManager.applyTripPayload(rawValue)
+                                val tripId = meterManager.liveState.value.currentTripId.ifBlank { rawValue }
+
+                                var driverIp = "127.0.0.1"
+                                if (rawValue.contains("|IP:")) {
+                                    val ip = rawValue.substringAfter("|IP:").substringBefore("|")
+                                    if (ip.isNotBlank()) driverIp = ip
                                 }
+
+                                syncManager.startPassengerSync(
+                                    meterManager = meterManager,
+                                    tripId = tripId,
+                                    driverIp = driverIp
+                                )
+
+                                Toast.makeText(context, "تم مسح الباركود وربط العداد: $tripId", Toast.LENGTH_SHORT).show()
+                                onNavigateToFareApproval(tripId)
                             }
-                    ) {
-                        QrScannerViewfinder()
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier.size(240.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            QrScannerViewfinder()
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = { cameraPermissionState.launchPermissionRequest() },
+                            colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.appleGreen),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("السماح باستخدام الكاميرا", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(14.dp))
