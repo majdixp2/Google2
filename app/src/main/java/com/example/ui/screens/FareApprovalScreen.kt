@@ -286,7 +286,7 @@ fun FareApprovalScreen(
             Button(
                 onClick = {
                     coroutineScope.launch {
-                        syncManager.sendPassengerAcceptance(tripId)
+                        syncManager.sendPassengerAcceptance(tripId, syncManager.lastKnownDriverIp)
                     }
                     val success = meterManager.passengerAcceptsFare(tripId)
                     if (success) {
