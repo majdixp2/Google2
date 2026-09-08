@@ -46,12 +46,20 @@ class TripSyncManager private constructor(private val context: Context) {
 
     // Free, reliable public real-time key-value / pubsub relay for instant syncing
     // Can also fallback to local server
-    private val cloudRelayUrl = "https://kvdb.io/4y9Y8rGZ2256wUqgC7f6jJ"
+    private val cloudRelayUrl = "https://kvdb.io/NFYnBNshkab7oLvow2PJPK"
 
     private var localServerSocket: ServerSocket? = null
     private var isServerRunning = false
     private var pollingJob: Job? = null
     private var driverBroadcastJob: Job? = null
+
+    /**
+     * The most recent driver IP the passenger successfully connected to
+     * (set right after a QR scan / manual trip-code connect). Used so that
+     * the "Accept fare" action can reach the driver directly over the local
+     * network instead of relying solely on the cloud relay.
+     */
+    var lastKnownDriverIp: String? = null
 
     companion object {
         const val DEFAULT_PORT = 8998
