@@ -646,6 +646,7 @@ fun PassengerHomeScreen(
                                     val ip = rawValue.substringAfter("|IP:").substringBefore("|")
                                     if (ip.isNotBlank()) driverIp = ip
                                 }
+                                syncManager.lastKnownDriverIp = driverIp
 
                                 syncManager.startPassengerSync(
                                     meterManager = meterManager,
@@ -707,6 +708,7 @@ fun PassengerHomeScreen(
                             val ip = payload.substringAfter("|IP:").substringBefore("|")
                             if (ip.isNotBlank()) driverIp = ip
                         }
+                        syncManager.lastKnownDriverIp = driverIp
 
                         // Connect sync
                         syncManager.startPassengerSync(
@@ -795,6 +797,9 @@ fun PassengerHomeScreen(
                         if (cleanId.isNotBlank()) {
                             showEnterTripIdDialog = false
                             meterManager.applyTripPayload(cleanId)
+
+                            // No known local IP for a manually typed trip ID — rely on cloud relay only
+                            syncManager.lastKnownDriverIp = null
 
                             // Start passenger sync for this trip ID across devices
                             syncManager.startPassengerSync(
