@@ -84,6 +84,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 import com.example.network.TripSyncManager
 import com.example.engine.LiveMeterState
 import com.example.engine.RideMeterManager
@@ -92,7 +95,7 @@ import com.example.model.TripStatus
 import com.example.ui.components.QrCodeView
 import com.example.ui.theme.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun DriverHomeScreen(
     meterManager: RideMeterManager,
@@ -110,6 +113,17 @@ fun DriverHomeScreen(
         syncManager.startDriverServer(meterManager)
         onDispose {
             // Keep server running or stop
+        }
+    }
+
+    // Real GPS distance tracking requires this runtime permission — request it as soon
+    // as the driver opens their meter screen, and (re)start location updates once granted.
+    val locationPermissionState = rememberPermissionState(android.Manifest.permission.ACCESS_FINE_LOCATION)
+    LaunchedEffect(locationPermissionState.status.isGranted) {
+        if (!locationPermissionState.status.isGranted) {
+            locationPermissionState.launchPermissionRequest()
+        } else {
+            meterManager.startLocationUpdates()
         }
     }
 
@@ -1006,4 +1020,3 @@ private fun DriverStoppedResultCard(
         }
     }
 }
-
