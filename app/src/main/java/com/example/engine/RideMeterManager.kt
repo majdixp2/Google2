@@ -76,6 +76,7 @@ class RideMeterManager private constructor(private val context: Context) {
     private var tickerJob: Job? = null
     private var lastLocation: Location? = null
     private var locationManager: LocationManager? = null
+    private var isLocationListenerActive = false
 
     private val _liveState = MutableStateFlow(LiveMeterState())
     val liveState: StateFlow<LiveMeterState> = _liveState.asStateFlow()
@@ -119,7 +120,7 @@ class RideMeterManager private constructor(private val context: Context) {
 
     init {
         initNewTripId(MeterMode.EXTRA_RIDE)
-        setupLocationListener()
+        startLocationUpdates()
     }
 
     fun initNewTripId(mode: MeterMode) {
@@ -260,18 +261,19 @@ class RideMeterManager private constructor(private val context: Context) {
                 _liveState.update { state ->
                     if (!state.isCounting) return@update state
                     val newDuration = state.durationSeconds + 1
-                    // Simulated GPS movement
-                    val simIncrement = if (state.mode == MeterMode.EXTRA_RIDE) {
-                        (8.0 + (Math.random() * 8.0)) // 8 to 16 meters
+                    // Distance is no longer simulated here — it is driven exclusively by
+                    // real GPS fixes in setupLocationListener(). This tick only advances
+                    // elapsed time (and therefore the waiting/time-based fare component),
+                    // and lets the displayed speed decay toward zero if no fresh GPS fix
+                    // has arrived recently (e.g. the vehicle is stopped or signal is weak).
+                    val decayedSpeed = if (state.mode == MeterMode.EXTRA_RIDE) {
+                        state.speedKmh * 0.6
                     } else {
                         0.0
                     }
-                    val newDist = state.distanceMeters + simIncrement
-                    val speed = if (state.mode == MeterMode.EXTRA_RIDE) (simIncrement * 3.6) else 0.0
                     val updated = state.copy(
                         durationSeconds = newDuration,
-                        distanceMeters = newDist,
-                        speedKmh = speed
+                        speedKmh = decayedSpeed
                     )
                     recalculate(updated)
                 }
@@ -427,7 +429,8 @@ class RideMeterManager private constructor(private val context: Context) {
     }
 
     @SuppressLint("MissingPermission")
-    private fun setupLocationListener() {
+    fun startLocationUpdates() {
+        if (isLocationListenerActive) return
         try {
             locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
             val listener = object : LocationListener {
@@ -457,16 +460,33 @@ class RideMeterManager private constructor(private val context: Context) {
                 override fun onProviderDisabled(provider: String) {}
             }
 
+            var registered = false
             if (locationManager?.isProviderEnabled(LocationManager.GPS_PROVIDER) == true) {
                 locationManager?.requestLocationUpdates(
                     LocationManager.GPS_PROVIDER,
-                    2000L,
+                    1500L,
                     2f,
                     listener
                 )
+                registered = true
             }
+            // Network-based provider as a faster/indoor-friendly fallback, in addition to GPS
+            if (locationManager?.isProviderEnabled(LocationManager.NETWORK_PROVIDER) == true) {
+                locationManager?.requestLocationUpdates(
+                    LocationManager.NETWORK_PROVIDER,
+                    1500L,
+                    2f,
+                    listener
+                )
+                registered = true
+            }
+            isLocationListenerActive = registered
+        } catch (e: SecurityException) {
+            // Runtime permission not granted yet — the calling screen is expected to
+            // request ACCESS_FINE_LOCATION and call startLocationUpdates() again on grant.
+            isLocationListenerActive = false
         } catch (e: Exception) {
-            // Simulation takes over
+            isLocationListenerActive = false
         }
     }
 }
