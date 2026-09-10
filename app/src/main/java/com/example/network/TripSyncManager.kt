@@ -61,6 +61,14 @@ class TripSyncManager private constructor(private val context: Context) {
      */
     var lastKnownDriverIp: String? = null
 
+    /**
+     * Human-readable status of the most recent sync attempt (local + cloud),
+     * for on-screen diagnostics. Never silently swallowed — every attempt
+     * updates this so connection problems are visible instead of invisible.
+     */
+    private val _syncDebugStatus = kotlinx.coroutines.flow.MutableStateFlow("")
+    val syncDebugStatus: kotlinx.coroutines.flow.StateFlow<String> = _syncDebugStatus
+
     companion object {
         const val DEFAULT_PORT = 8998
 
@@ -77,13 +85,39 @@ class TripSyncManager private constructor(private val context: Context) {
     }
 
     /**
-     * Get the device IP address on Local Wi-Fi or Hotspot
+     * Get the device IP address on Local Wi-Fi or Hotspot.
+     * Explicitly prefers a Wi-Fi-style interface (wlan/ap) first, since a device
+     * may also have mobile data active at the same time — picking that IP instead
+     * would be unreachable by another device on the same Wi-Fi network.
      */
     fun getLocalIpAddress(): String {
         try {
-            val interfaces = NetworkInterface.getNetworkInterfaces()
-            while (interfaces.hasMoreElements()) {
-                val iface = interfaces.nextElement()
+            val allIfaces = mutableListOf<NetworkInterface>()
+            val ifaceEnum = NetworkInterface.getNetworkInterfaces()
+            while (ifaceEnum.hasMoreElements()) {
+                allIfaces.add(ifaceEnum.nextElement())
+            }
+
+            // Pass 1: interfaces that look like Wi-Fi / hotspot (wlan0, ap0, swlan0, etc.)
+            for (iface in allIfaces) {
+                if (iface.isLoopback || !iface.isUp) continue
+                val name = iface.name.lowercase()
+                if (!(name.contains("wlan") || name.contains("ap") || name.contains("swlan"))) continue
+                val addresses = iface.inetAddresses
+                while (addresses.hasMoreElements()) {
+                    val addr = addresses.nextElement()
+                    if (!addr.isLoopbackAddress && addr is Inet4Address) {
+                        val host = addr.hostAddress ?: ""
+                        if (host.isNotBlank() && !host.startsWith("127.")) {
+                            return host
+                        }
+                    }
+                }
+            }
+
+            // Pass 2: fall back to any other non-loopback IPv4 interface (e.g. mobile data,
+            // used only when Wi-Fi isn't available — cloud relay remains the reliable path then)
+            for (iface in allIfaces) {
                 if (iface.isLoopback || !iface.isUp) continue
                 val addresses = iface.inetAddresses
                 while (addresses.hasMoreElements()) {
@@ -112,12 +146,14 @@ class TripSyncManager private constructor(private val context: Context) {
         scope.launch {
             try {
                 localServerSocket = ServerSocket(DEFAULT_PORT)
+                _syncDebugStatus.value = "✅ الخادم المحلي يعمل على المنفذ $DEFAULT_PORT"
                 while (isServerRunning && isActive) {
                     val clientSocket = localServerSocket?.accept() ?: break
+                    _syncDebugStatus.value = "📥 اتصال وارد من ${clientSocket.inetAddress?.hostAddress}"
                     handleClientRequest(clientSocket, meterManager)
                 }
             } catch (e: Exception) {
-                // Socket closed or error
+                _syncDebugStatus.value = "❌ فشل تشغيل الخادم المحلي: ${e.javaClass.simpleName} - ${e.message}"
             }
         }
 
@@ -267,8 +303,8 @@ class TripSyncManager private constructor(private val context: Context) {
 
                 // 1. Try local Wi-Fi / Hotspot server if IP is available
                 if (!targetHostIp.isNullOrBlank()) {
+                    val localUrl = "http://$targetHostIp:$DEFAULT_PORT/state"
                     try {
-                        val localUrl = "http://$targetHostIp:$DEFAULT_PORT/state"
                         val req = Request.Builder().url(localUrl).get().build()
                         httpClient.newCall(req).execute().use { resp ->
                             if (resp.isSuccessful) {
@@ -277,11 +313,16 @@ class TripSyncManager private constructor(private val context: Context) {
                                     val state = parseJsonToState(body, cleanTripId)
                                     withContext(Dispatchers.Main) { onUpdate(state) }
                                     fetched = true
+                                    _syncDebugStatus.value = "✅ محلي متصل: $localUrl"
+                                } else {
+                                    _syncDebugStatus.value = "⚠️ محلي: رد فاضي من $localUrl"
                                 }
+                            } else {
+                                _syncDebugStatus.value = "⚠️ محلي: رمز ${resp.code} من $localUrl"
                             }
                         }
                     } catch (e: Exception) {
-                        // Local fetch failed, fallback to cloud
+                        _syncDebugStatus.value = "❌ محلي فشل ($localUrl): ${e.javaClass.simpleName} - ${e.message}"
                     }
                 }
 
@@ -297,11 +338,16 @@ class TripSyncManager private constructor(private val context: Context) {
                                     val state = parseJsonToState(body, cleanTripId)
                                     withContext(Dispatchers.Main) { onUpdate(state) }
                                     fetched = true
+                                    _syncDebugStatus.value = "☁️ سحابي متصل: $key"
+                                } else {
+                                    _syncDebugStatus.value = "⚠️ سحابي: رد فاضي لـ $key (لسه ما بث السائق بيانات)"
                                 }
+                            } else {
+                                _syncDebugStatus.value = "❌ سحابي: رمز ${resp.code} لـ $key"
                             }
                         }
                     } catch (e: Exception) {
-                        // Cloud sync error
+                        _syncDebugStatus.value = "❌ سحابي فشل: ${e.javaClass.simpleName} - ${e.message}"
                     }
                 }
 
@@ -320,17 +366,25 @@ class TripSyncManager private constructor(private val context: Context) {
 
             // Try local
             if (!targetHostIp.isNullOrBlank()) {
+                val localUrl = "http://$targetHostIp:$DEFAULT_PORT/accept"
                 try {
                     val req = Request.Builder()
-                        .url("http://$targetHostIp:$DEFAULT_PORT/accept")
+                        .url(localUrl)
                         .post("{}".toRequestBody("application/json".toMediaType()))
                         .build()
                     httpClient.newCall(req).execute().use { resp ->
-                        if (resp.isSuccessful) ok = true
+                        if (resp.isSuccessful) {
+                            ok = true
+                            _syncDebugStatus.value = "✅ موافقة أُرسلت محليًا: $localUrl"
+                        } else {
+                            _syncDebugStatus.value = "⚠️ موافقة محلية: رمز ${resp.code} من $localUrl"
+                        }
                     }
                 } catch (e: Exception) {
-                    // Ignore
+                    _syncDebugStatus.value = "❌ موافقة محلية فشلت ($localUrl): ${e.javaClass.simpleName} - ${e.message}"
                 }
+            } else {
+                _syncDebugStatus.value = "⚠️ لا يوجد IP محلي محفوظ — سيتم الاعتماد على السحابة فقط"
             }
 
             // Also post accepted state update to Cloud
