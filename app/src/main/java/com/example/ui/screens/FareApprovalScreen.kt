@@ -78,6 +78,7 @@ fun FareApprovalScreen(
     val coroutineScope = rememberCoroutineScope()
     val syncManager = remember { TripSyncManager.getInstance(context) }
     val liveState by meterManager.liveState.collectAsState()
+    val syncDebugStatus by syncManager.syncDebugStatus.collectAsState()
     val tariff = liveState.currentTariff
     val isExtraRide = liveState.mode == MeterMode.EXTRA_RIDE
 
@@ -330,6 +331,17 @@ fun FareApprovalScreen(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
+
+            if (syncDebugStatus.isNotBlank()) {
+                Text(
+                    syncDebugStatus,
+                    color = AppTheme.colors.textMuted,
+                    fontSize = 10.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
 
             // Cancel / Back Button
             OutlinedButton(
