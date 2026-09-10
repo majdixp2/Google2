@@ -131,6 +131,7 @@ fun DriverHomeScreen(
     val isDark by ThemeManager.isDarkMode.collectAsState()
     var showQrDialog by remember { mutableStateOf(false) }
     val localIp = remember { syncManager.getLocalIpAddress() }
+    val syncDebugStatus by syncManager.syncDebugStatus.collectAsState()
 
     val isStopped = liveState.status == TripStatus.STOPPED
 
@@ -716,6 +717,16 @@ fun DriverHomeScreen(
                             color = AppTheme.colors.primary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    if (syncDebugStatus.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            syncDebugStatus,
+                            color = AppTheme.colors.textMuted,
+                            fontSize = 10.sp,
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
