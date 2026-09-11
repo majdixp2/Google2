@@ -107,6 +107,7 @@ fun PassengerLiveTripScreen(
     val coroutineScope = rememberCoroutineScope()
     val syncManager = remember { TripSyncManager.getInstance(context) }
     val liveState by meterManager.liveState.collectAsState()
+    val syncDebugStatus by syncManager.syncDebugStatus.collectAsState()
     val isStopped = liveState.status == TripStatus.STOPPED || liveState.status == TripStatus.COMPLETED
     val isDarkMode by ThemeManager.isDarkMode.collectAsState()
 
@@ -488,6 +489,15 @@ private fun LiveRunningHeader(liveState: LiveMeterState, pulseScale: Float) {
                 )
             }
         }
+
+        if (syncDebugStatus.isNotBlank()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                syncDebugStatus,
+                color = AppTheme.colors.textMuted,
+                fontSize = 10.sp
+            )
+        }
     }
 }
 
@@ -738,3 +748,4 @@ private fun ReceiptRow(label: String, value: String) {
         Text(value, color = AppTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
     }
 }
+
