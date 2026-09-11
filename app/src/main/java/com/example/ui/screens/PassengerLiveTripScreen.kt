@@ -196,7 +196,7 @@ fun PassengerLiveTripScreen(
 
             if (!isStopped) {
                 // LIVE RUNNING METER VIEW
-                LiveRunningHeader(liveState = liveState, pulseScale = pulseScale)
+                LiveRunningHeader(liveState = liveState, pulseScale = pulseScale, syncDebugStatus = syncDebugStatus)
 
                 // Big Total Fare Counter Card
                 Card(
@@ -436,7 +436,7 @@ fun PassengerLiveTripScreen(
 }
 
 @Composable
-private fun LiveRunningHeader(liveState: LiveMeterState, pulseScale: Float) {
+private fun LiveRunningHeader(liveState: LiveMeterState, pulseScale: Float, syncDebugStatus: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -748,4 +748,3 @@ private fun ReceiptRow(label: String, value: String) {
         Text(value, color = AppTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
     }
 }
-
