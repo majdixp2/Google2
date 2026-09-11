@@ -114,7 +114,11 @@ fun PassengerLiveTripScreen(
     // Ensure passenger sync is running for this trip if active
     DisposableEffect(liveState.currentTripId) {
         if (liveState.currentTripId.isNotBlank()) {
-            syncManager.startPassengerSync(meterManager, liveState.currentTripId)
+            syncManager.startPassengerSync(
+                meterManager = meterManager,
+                tripId = liveState.currentTripId,
+                driverIp = syncManager.lastKnownDriverIp ?: ""
+            )
         }
         onDispose { }
     }
@@ -495,7 +499,9 @@ private fun LiveRunningHeader(liveState: LiveMeterState, pulseScale: Float, sync
             Text(
                 syncDebugStatus,
                 color = AppTheme.colors.textMuted,
-                fontSize = 10.sp
+                fontSize = 10.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }
