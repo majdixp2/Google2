@@ -233,17 +233,23 @@ class RideMeterManager private constructor(private val context: Context) {
         return false
     }
 
+    /**
+     * Called on the PASSENGER's device when they tap "accept fare". This only
+     * marks local UI flags — it must NEVER start a local ticker (startCounting()),
+     * because the passenger's live numbers must come exclusively from the driver's
+     * synced state via updateExternalLiveState(). Running a local ticker here would
+     * make the passenger's screen compute its own independent (and wrong) fare in
+     * parallel with the real synced value from the driver.
+     */
     fun passengerAcceptsFare(tripId: String): Boolean {
         val cleanTripId = tripId.trim().uppercase()
         _liveState.update {
             it.copy(
                 currentTripId = if (cleanTripId.isNotBlank()) cleanTripId else it.currentTripId,
                 passengerAccepted = true,
-                status = TripStatus.RUNNING,
-                isCounting = true
+                status = TripStatus.RUNNING
             )
         }
-        startCounting()
         return true
     }
 
