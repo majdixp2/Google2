@@ -108,23 +108,22 @@ class RideMeterManager private constructor(private val context: Context) {
                             config.waitingBaseFare
                         }
                         val newBase = if (current.status == TripStatus.IDLE) base else current.baseFare
-                        // Keep the QR payload's embedded price in sync with the real tariff —
-                        // otherwise a code generated before the config finished loading would
-                        // keep advertising a stale default price to anyone who scans it.
-                        val ipPart = current.qrPayload.substringAfter("|IP:", "").let {
-                            if (it.isNotBlank() && current.qrPayload.contains("|IP:")) "|IP:${it.substringBefore("|")}" else ""
-                        }
-                        val refreshedPayload = if (current.status == TripStatus.IDLE) {
-                            "RIDE_METER|ID:${current.currentTripId}|MODE:${current.mode.name}|BASE:$newBase$ipPart|DATE:${System.currentTimeMillis()}"
-                        } else {
-                            current.qrPayload
-                        }
+                        val existingIp = if (current.qrPayload.contains("|IP:")) {
+                            current.qrPayload.substringAfter("|IP:").substringBefore("|")
+                        } else ""
                         val updated = current.copy(
                             currentTariff = config,
-                            baseFare = newBase,
-                            qrPayload = refreshedPayload
+                            baseFare = newBase
                         )
-                        recalculate(updated)
+                        val recalculated = recalculate(updated)
+                        // Keep the QR payload's embedded tariff in sync with the real config —
+                        // otherwise a code generated before the config finished loading would
+                        // keep advertising stale default rates to anyone who scans it.
+                        if (current.status == TripStatus.IDLE) {
+                            recalculated.copy(qrPayload = buildPayload(recalculated, existingIp))
+                        } else {
+                            recalculated
+                        }
                     }
                 }
             }
@@ -136,15 +135,30 @@ class RideMeterManager private constructor(private val context: Context) {
         startLocationUpdates()
     }
 
+    /**
+     * Builds the RIDE_METER QR/trip-code payload carrying the FULL real tariff
+     * (base + per-km + per-min + tax), not just the base fare — otherwise a
+     * scanning passenger device would only learn the base fare and keep showing
+     * its own local default rates for everything else.
+     */
+    private fun buildPayload(state: LiveMeterState, hostIp: String = ""): String {
+        val tariff = state.currentTariff
+        val perKm = if (state.mode == MeterMode.EXTRA_RIDE) tariff.extraRidePerKm else tariff.waitingPerKm
+        val perMin = if (state.mode == MeterMode.EXTRA_RIDE) tariff.extraRidePerMin else tariff.waitingPerMin
+        val ipPart = if (hostIp.isNotBlank()) "|IP:$hostIp" else ""
+        return "RIDE_METER|ID:${state.currentTripId}|MODE:${state.mode.name}|BASE:${state.baseFare}" +
+            "|PERKM:$perKm|PERMIN:$perMin|TAX:${tariff.taxPercentage}|CUR:${tariff.currency}$ipPart" +
+            "|DATE:${System.currentTimeMillis()}"
+    }
+
     fun initNewTripId(mode: MeterMode) {
         val randomNum = 1000 + Random().nextInt(9000)
         val newTripId = "TRIP-$randomNum"
         val tariff = _liveState.value.currentTariff
         val base = if (mode == MeterMode.EXTRA_RIDE) tariff.extraRideBaseFare else tariff.waitingBaseFare
-        val payload = "RIDE_METER|ID:$newTripId|MODE:${mode.name}|BASE:$base|DATE:${System.currentTimeMillis()}"
 
         _liveState.update {
-            it.copy(
+            val withBase = it.copy(
                 currentTripId = newTripId,
                 mode = mode,
                 status = TripStatus.IDLE,
@@ -161,9 +175,9 @@ class RideMeterManager private constructor(private val context: Context) {
                 driverNetPayout = base,
                 totalFare = base,
                 passengerAccepted = false,
-                qrPayload = payload,
                 stoppedStateBackup = null
             )
+            withBase.copy(qrPayload = buildPayload(withBase))
         }
     }
 
@@ -171,25 +185,21 @@ class RideMeterManager private constructor(private val context: Context) {
         if (_liveState.value.isCounting) return
         val tariff = _liveState.value.currentTariff
         val base = if (mode == MeterMode.EXTRA_RIDE) tariff.extraRideBaseFare else tariff.waitingBaseFare
-        val payload = "RIDE_METER|ID:${_liveState.value.currentTripId}|MODE:${mode.name}|BASE:$base|DATE:${System.currentTimeMillis()}"
         _liveState.update {
             val updated = it.copy(
                 mode = mode,
-                baseFare = base,
-                qrPayload = payload
+                baseFare = base
             )
-            recalculate(updated)
+            val recalculated = recalculate(updated)
+            recalculated.copy(qrPayload = buildPayload(recalculated))
         }
     }
 
     fun shareBarcode(hostIp: String = "") {
-        val current = _liveState.value
-        val ipPart = if (hostIp.isNotBlank()) "|IP:$hostIp" else ""
-        val payload = "RIDE_METER|ID:${current.currentTripId}|MODE:${current.mode.name}|BASE:${current.baseFare}$ipPart|DATE:${System.currentTimeMillis()}"
-        _liveState.update {
-            it.copy(
-                status = if (it.status == TripStatus.IDLE) TripStatus.PENDING_APPROVAL else it.status,
-                qrPayload = payload
+        _liveState.update { current ->
+            current.copy(
+                status = if (current.status == TripStatus.IDLE) TripStatus.PENDING_APPROVAL else current.status,
+                qrPayload = buildPayload(current, hostIp)
             )
         }
     }
@@ -217,6 +227,10 @@ class RideMeterManager private constructor(private val context: Context) {
             var tripId = ""
             var modeName = ""
             var baseFareVal = 5.0
+            var perKmVal: Double? = null
+            var perMinVal: Double? = null
+            var taxVal: Double? = null
+            var currencyVal: String? = null
             var hostIp = ""
 
             for (part in parts) {
@@ -224,19 +238,49 @@ class RideMeterManager private constructor(private val context: Context) {
                     part.startsWith("ID:") -> tripId = part.substring(3).trim()
                     part.startsWith("MODE:") -> modeName = part.substring(5).trim()
                     part.startsWith("BASE:") -> baseFareVal = part.substring(5).trim().toDoubleOrNull() ?: 5.0
+                    part.startsWith("PERKM:") -> perKmVal = part.substring(6).trim().toDoubleOrNull()
+                    part.startsWith("PERMIN:") -> perMinVal = part.substring(7).trim().toDoubleOrNull()
+                    part.startsWith("TAX:") -> taxVal = part.substring(4).trim().toDoubleOrNull()
+                    part.startsWith("CUR:") -> currencyVal = part.substring(4).trim()
                     part.startsWith("IP:") -> hostIp = part.substring(3).trim()
                 }
             }
 
             val mode = try { MeterMode.valueOf(modeName) } catch (e: Exception) { MeterMode.EXTRA_RIDE }
             if (tripId.isNotBlank()) {
-                _liveState.update {
-                    it.copy(
+                _liveState.update { current ->
+                    // Build the REAL scanned tariff instead of relying on this device's
+                    // own local (possibly never-configured) default TariffConfig.
+                    val scannedTariff = if (perKmVal != null || perMinVal != null || taxVal != null) {
+                        val base = current.currentTariff
+                        if (mode == MeterMode.EXTRA_RIDE) {
+                            base.copy(
+                                extraRideBaseFare = baseFareVal,
+                                extraRidePerKm = perKmVal ?: base.extraRidePerKm,
+                                extraRidePerMin = perMinVal ?: base.extraRidePerMin,
+                                taxPercentage = taxVal ?: base.taxPercentage,
+                                currency = currencyVal ?: base.currency
+                            )
+                        } else {
+                            base.copy(
+                                waitingBaseFare = baseFareVal,
+                                waitingPerMin = perMinVal ?: base.waitingPerMin,
+                                waitingPerKm = perKmVal ?: base.waitingPerKm,
+                                taxPercentage = taxVal ?: base.taxPercentage,
+                                currency = currencyVal ?: base.currency
+                            )
+                        }
+                    } else {
+                        current.currentTariff
+                    }
+                    val updated = current.copy(
                         currentTripId = tripId,
                         mode = mode,
                         baseFare = baseFareVal,
+                        currentTariff = scannedTariff,
                         qrPayload = payload
                     )
+                    recalculate(updated)
                 }
                 return true
             }
