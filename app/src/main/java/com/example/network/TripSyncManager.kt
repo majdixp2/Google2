@@ -422,6 +422,7 @@ class TripSyncManager private constructor(private val context: Context) {
     }
 
     private fun stateToJson(state: LiveMeterState): String {
+        val tariff = state.currentTariff
         val obj = JSONObject().apply {
             put("tripId", state.currentTripId)
             put("mode", state.mode.name)
@@ -441,6 +442,16 @@ class TripSyncManager private constructor(private val context: Context) {
             put("driverPlate", state.driverPlate)
             put("driverCar", state.driverCar)
             put("qrPayload", state.qrPayload)
+            // Real tariff rates — without these, a passenger's polled live state would
+            // fall back to its own device's local default rates instead of the driver's.
+            put("extraRideBaseFare", tariff.extraRideBaseFare)
+            put("extraRidePerKm", tariff.extraRidePerKm)
+            put("extraRidePerMin", tariff.extraRidePerMin)
+            put("waitingBaseFare", tariff.waitingBaseFare)
+            put("waitingPerKm", tariff.waitingPerKm)
+            put("waitingPerMin", tariff.waitingPerMin)
+            put("taxPercentage", tariff.taxPercentage)
+            put("currency", tariff.currency)
         }
         return obj.toString()
     }
@@ -451,6 +462,17 @@ class TripSyncManager private constructor(private val context: Context) {
         val mode = try { MeterMode.valueOf(modeStr) } catch (e: Exception) { MeterMode.EXTRA_RIDE }
         val statusStr = obj.optString("status", "RUNNING")
         val status = try { TripStatus.valueOf(statusStr) } catch (e: Exception) { TripStatus.RUNNING }
+
+        val tariff = com.example.model.TariffConfig(
+            extraRideBaseFare = obj.optDouble("extraRideBaseFare", 5.0),
+            extraRidePerKm = obj.optDouble("extraRidePerKm", 2.0),
+            extraRidePerMin = obj.optDouble("extraRidePerMin", 0.5),
+            waitingBaseFare = obj.optDouble("waitingBaseFare", 3.0),
+            waitingPerKm = obj.optDouble("waitingPerKm", 0.0),
+            waitingPerMin = obj.optDouble("waitingPerMin", 1.0),
+            taxPercentage = obj.optDouble("taxPercentage", 15.0),
+            currency = obj.optString("currency", "ريال")
+        )
 
         return LiveMeterState(
             currentTripId = obj.optString("tripId", fallbackTripId),
@@ -470,7 +492,8 @@ class TripSyncManager private constructor(private val context: Context) {
             driverName = obj.optString("driverName", "كابتن أحمد المنصور"),
             driverPlate = obj.optString("driverPlate", "ر ح ل ٩ ٨ ٧"),
             driverCar = obj.optString("driverCar", "كامري ٢٠٢٤ - أسود"),
-            qrPayload = obj.optString("qrPayload", "")
+            qrPayload = obj.optString("qrPayload", ""),
+            currentTariff = tariff
         )
     }
 }
