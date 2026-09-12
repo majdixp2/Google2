@@ -496,8 +496,25 @@ class RideMeterManager private constructor(private val context: Context) {
         if (isLocationListenerActive) return
         try {
             locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+            var hasGpsFix = false
+
             val listener = object : LocationListener {
                 override fun onLocationChanged(location: Location) {
+                    // Once a real GPS fix has arrived, ignore the much less accurate
+                    // Network provider entirely — mixing the two causes phantom
+                    // "movement" while stationary, since their reported positions for
+                    // the same physical spot commonly differ by tens of meters.
+                    val isGps = location.provider == LocationManager.GPS_PROVIDER
+                    if (isGps) hasGpsFix = true
+                    if (!isGps && hasGpsFix) return
+
+                    // Reject fixes with poor accuracy — real GPS is typically 3-10m
+                    // outdoors; Network fixes are commonly 20-100m. A high accuracy
+                    // radius means the reported position itself is unreliable.
+                    if (location.hasAccuracy() && location.accuracy > 25f) {
+                        return
+                    }
+
                     if (!_liveState.value.isCounting || _liveState.value.mode != MeterMode.EXTRA_RIDE) {
                         lastLocation = location
                         return
@@ -505,7 +522,11 @@ class RideMeterManager private constructor(private val context: Context) {
                     val prev = lastLocation
                     if (prev != null) {
                         val distance = prev.distanceTo(location).toDouble()
-                        if (distance in 1.0..100.0) {
+                        val elapsedSeconds = (location.time - prev.time) / 1000.0
+                        // Reject implausible jumps: a taxi ride won't realistically exceed
+                        // ~55 m/s (~200 km/h); anything faster is almost certainly a bad fix.
+                        val impliedSpeedMs = if (elapsedSeconds > 0) distance / elapsedSeconds else 0.0
+                        if (distance in 1.0..100.0 && impliedSpeedMs <= 55.0) {
                             _liveState.update { state ->
                                 val updated = state.copy(
                                     distanceMeters = state.distanceMeters + distance,
@@ -533,7 +554,9 @@ class RideMeterManager private constructor(private val context: Context) {
                 )
                 registered = true
             }
-            // Network-based provider as a faster/indoor-friendly fallback, in addition to GPS
+            // Network-based provider as a fallback ONLY until a real GPS fix arrives
+            // (e.g. brief indoor start-up) — the listener above stops honoring it
+            // the moment GPS kicks in, to avoid mixing accuracy levels.
             if (locationManager?.isProviderEnabled(LocationManager.NETWORK_PROVIDER) == true) {
                 locationManager?.requestLocationUpdates(
                     LocationManager.NETWORK_PROVIDER,
