@@ -107,9 +107,22 @@ class RideMeterManager private constructor(private val context: Context) {
                         } else {
                             config.waitingBaseFare
                         }
+                        val newBase = if (current.status == TripStatus.IDLE) base else current.baseFare
+                        // Keep the QR payload's embedded price in sync with the real tariff —
+                        // otherwise a code generated before the config finished loading would
+                        // keep advertising a stale default price to anyone who scans it.
+                        val ipPart = current.qrPayload.substringAfter("|IP:", "").let {
+                            if (it.isNotBlank() && current.qrPayload.contains("|IP:")) "|IP:${it.substringBefore("|")}" else ""
+                        }
+                        val refreshedPayload = if (current.status == TripStatus.IDLE) {
+                            "RIDE_METER|ID:${current.currentTripId}|MODE:${current.mode.name}|BASE:$newBase$ipPart|DATE:${System.currentTimeMillis()}"
+                        } else {
+                            current.qrPayload
+                        }
                         val updated = current.copy(
                             currentTariff = config,
-                            baseFare = if (current.status == TripStatus.IDLE) base else current.baseFare
+                            baseFare = newBase,
+                            qrPayload = refreshedPayload
                         )
                         recalculate(updated)
                     }
