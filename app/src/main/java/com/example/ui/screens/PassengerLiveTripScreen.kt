@@ -501,9 +501,9 @@ private fun LiveRunningHeader(liveState: LiveMeterState, pulseScale: Float, sync
                 color = AppTheme.colors.textMuted,
                 fontSize = 10.sp,
                 textAlign = TextAlign.Center,
-                style = androidx.compose.ui.text.TextStyle(
-                    textDirection = androidx.compose.ui.text.style.TextDirection.Ltr
-                ),
+                maxLines = 1,
+                softWrap = false,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 modifier = Modifier.fillMaxWidth()
             )
         }
