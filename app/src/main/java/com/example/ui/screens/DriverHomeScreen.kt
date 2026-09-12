@@ -130,6 +130,14 @@ fun DriverHomeScreen(
     val liveState by meterManager.liveState.collectAsState()
     val isDark by ThemeManager.isDarkMode.collectAsState()
     var showQrDialog by remember { mutableStateOf(false) }
+
+    // Auto-close the QR/waiting dialog the instant the passenger accepts and the meter
+    // actually starts counting — the driver shouldn't have to manually close it.
+    LaunchedEffect(liveState.isCounting) {
+        if (liveState.isCounting) {
+            showQrDialog = false
+        }
+    }
     val localIp = remember { syncManager.getLocalIpAddress() }
     val syncDebugStatus by syncManager.syncDebugStatus.collectAsState()
 
@@ -726,7 +734,11 @@ fun DriverHomeScreen(
                             syncDebugStatus,
                             color = AppTheme.colors.textMuted,
                             fontSize = 10.sp,
-                            textAlign = TextAlign.Center
+                            textAlign = TextAlign.Center,
+                            style = androidx.compose.ui.text.TextStyle(
+                                textDirection = androidx.compose.ui.text.style.TextDirection.Ltr
+                            ),
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
@@ -1031,3 +1043,4 @@ private fun DriverStoppedResultCard(
         }
     }
 }
+
